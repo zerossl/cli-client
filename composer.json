@@ -1,0 +1,21 @@
+{
+    "name": "zerossl/cli-client",
+    "description": "Create certificates and CSRs locally and easy in the CLI using newest PHP OpenSSL features and ZeroSSL for signing.",
+    "license": "GPL-3.0-or-later",
+    "authors": [
+        {
+            "name": "David Stöckl",
+            "email": "david.stoeckl@stack.holdings"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "ext-openssl": "*",
+        "ext-curl": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "ZeroSSL\\CliClient\\": "src/"
+        }
+    }
+}
