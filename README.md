@@ -2,6 +2,11 @@
 
 Signed certificates, CSRs, keys and from the command line with PHP CLI script in less than a minute. Easy, secure, fast.
 
+## Beta notice
+
+This software is in an early stage. Although most things should work there might be unexpected errors or problems. Please
+report any bugs you may encounter or even better create an MR to fix them.
+
 ## Requirements
 
  - PHP 8.1 or higher
