@@ -20,7 +20,7 @@ Please report any bugs you may encounter or even better create an MR to fix them
 1. Go to: https://zerossl.com/
 2. Create an free account
 3. Within your dashboard navigate to developer and get your API key
-4. Now you can create valid SSL certificates with ZeroSSL (if you exceed your free limit you need a paid account)
+4. Now you can create valid SSL certificates with ZeroSSL
 
 ## Requirements
 
