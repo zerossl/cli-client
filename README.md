@@ -1,18 +1,25 @@
 # ZeroSSL CLI client (beta)
 
-Signed certificates, CSRs, keys and from the command line with PHP CLI script in less than a minute. Easy, secure, fast.
+Get signed and valid SSL certificates, create CSRs and the corresponding private keys directly from the command line
+in usually less than a minute. Easy, secure, fast. 
+
+Automate the creation of a huge amount of certificates with the ZeroSSL API.
+
+Everything except for certificate creation and domain validation will happen in your local system.
+
+Can also be used for just creating CSRs or self-signed certificates as an entirely free tool.
 
 ## Beta notice
 
-This software is in an early stage. Although most things should work there might be unexpected errors or problems. Please
-report any bugs you may encounter or even better create an MR to fix them.
+This software is in an early beta stage, feedback is being gathered. Although most things should work there might be unexpected errors or problems. 
+Please report any bugs you may encounter or even better create an MR to fix them.
 
 ## Requirements
 
  - PHP 8.1 or higher
  - PHP OpenSSL extension (https://www.php.net/manual/en/book.openssl.php)
  - PHP CURL extension (https://www.php.net/manual/de/book.curl.php)
- - Optional: Composer (PHP dependency manager, https://getcomposer.org/)
+ - Optional: Composer (PHP dependency manager, only needed for development, used for autoloading, https://getcomposer.org/)
 
 ## Sample Usage
 
