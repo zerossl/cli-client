@@ -3,16 +3,24 @@
 Get signed and valid SSL certificates, create CSRs and the corresponding private keys directly from the command line
 in usually less than a minute. Easy, secure, fast. 
 
-Automate the creation of a huge amount of certificates with the ZeroSSL API.
-
-Everything except for certificate creation and domain validation will happen in your local system.
-
-Can also be used for just creating CSRs or self-signed certificates as an entirely free tool.
-
 ## Beta notice
 
-This software is in an early beta stage, feedback is being gathered. Although most things should work there might be unexpected errors or problems. 
+This software is in an early beta stage, feedback is being gathered. Although most things should work there might be unexpected errors or problems.
 Please report any bugs you may encounter or even better create an MR to fix them.
+
+## Use cases
+
+ - Automate the creation of a huge amount of certificates with the ZeroSSL API (can be used as a library / standalone toolkit)
+ - Everything except for certificate creation and domain validation will happen in your local system
+ - Can be used as a free tool for CSR creation
+ - Can be used as a free tool for self-signed certificate creation
+
+## How to get an API key for creating valid SSL certificates signed by ZeroSSL
+
+1. Go to: https://zerossl.com/
+2. Create an free account
+3. Within your dashboard navigate to developer and get your API key
+4. Now you can create valid SSL certificates with ZeroSSL (if you exceed your free limit you need a paid account)
 
 ## Requirements
 
