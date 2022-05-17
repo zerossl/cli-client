@@ -31,16 +31,16 @@ Please report any bugs you may encounter or even better create an MR to fix them
 
 ## Sample Usage
 
+Official certificates (signed by ZeroSSL CA):
+
+```
+php ./src/generator.php --apiKey=KEY --targetPath="/var/www/" --domains="example.com,www.example.com" --csrData="countryName=AT&stateOrProvinceName=Vienna&localityName=Vienna&organizationName=CLI%20Operations&emailAddress=certmaster@mailinator.com"
+```
+
 Self-signed certificates:
 
 ```
-php ./src/generator.php --targetPath="/home/blackbam/work/test/" --domains="example.com,www.example.com" --csrData="countryName=AT&stateOrProvinceName=Vienna&localityName=Vienna&organizationName=CLI%20Operations&emailAddress=certmaster@mailinator.com"
-```
-
-Official certificates:
-
-```
-php ./src/generator.php --apiKey=KEY --targetPath="/home/blackbam/work/test/" --domains="example.com,www.example.com" --csrData="countryName=AT&stateOrProvinceName=Vienna&localityName=Vienna&organizationName=CLI%20Operations&emailAddress=certmaster@mailinator.com"
+php ./src/generator.php --targetPath="/var/www/" --domains="example.com,www.example.com" --csrData="countryName=AT&stateOrProvinceName=Vienna&localityName=Vienna&organizationName=CLI%20Operations&emailAddress=certmaster@mailinator.com"
 ```
 
 ## Flags
