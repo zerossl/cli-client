@@ -1,6 +1,6 @@
 <?php
 
-require __DIR__ . '/../vendor/autoload.php';
+require dirname(__DIR__) . '/vendor/autoload.php';
 
 // just in case remote calls take a bit longer
 use ZeroSSL\CliClient\Dto\Options;
