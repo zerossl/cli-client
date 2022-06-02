@@ -2,11 +2,16 @@
 
 namespace ZeroSSL\CliClient;
 
+use Exception;
+use JsonException;
 use ZeroSSL\CliClient\Dto\Options;
 use ZeroSSL\CliClient\Enum\CertificateStatus;
 use ZeroSSL\CliClient\Enum\CertificateValidationType;
 use ZeroSSL\CliClient\Exception\ConfigurationException;
 use ZeroSSL\CliClient\Exception\NotYetSupportedException;
+use ZeroSSL\CliClient\Exception\OpenSSLGenerationException;
+use ZeroSSL\CliClient\Exception\OpenSSLSigningException;
+use ZeroSSL\CliClient\Exception\RemoteRequestException;
 use ZeroSSL\CliClient\Signers\SelfSigner;
 use ZeroSSL\CliClient\Signers\ZeroSSL\ApiEndpointRequester;
 use JetBrains\PhpStorm\ArrayShape;
@@ -16,22 +21,26 @@ class RequestProcessor
 
     public const ISSUANCE_SLEEP_SECONDS = 3;
     public const ISSUANCE_CHECK_SECONDS = 10;
+    public const VALIDATION_SUBFOLDER = "validation";
     public static bool $out = true;
 
     /**
      * @param Options $options
+     * @param bool $nonInteractive
      * @return array
      * @throws ConfigurationException
-     * @throws Exception\OpenSSLGenerationException
-     * @throws Exception\OpenSSLSigningException
+     * @throws OpenSSLGenerationException
+     * @throws OpenSSLSigningException
+     * @throws RemoteRequestException
      * @throws NotYetSupportedException
+     * @throws JsonException
      */
     #[ArrayShape([
         "private_key" => "string",
         "csr" => "string",
         "certificate" => "string",
     ])]
-    public static function generate(Options $options, bool $nonInteractive = false, bool $noVerification = false): array
+    public static function generate(Options $options, bool $nonInteractive = false): array
     {
         $result = [];
         $pkey = CSRTool::generatePrivateKey($options->useEccDefaults, $options->privateKeyOptions);
@@ -51,6 +60,7 @@ class RequestProcessor
         }
 
         $certificateOut = null;
+        $certificateOutPfx = null;
 
         if(!$options->csrOnly) {
 
@@ -85,6 +95,16 @@ class RequestProcessor
                         echo "\nFirst step successfully initiated. Now lets verify your ownership and sign it 🙂\n";
                     }
 
+                    if($options->targetPath) {
+                        $validationPath = $options->targetPath . DIRECTORY_SEPARATOR . self::VALIDATION_SUBFOLDER;
+                        if($options->validationType !== CertificateValidationType::EMAIL
+                            && !is_dir($validationPath)
+                            && !mkdir($concurrentDirectory = $validationPath)
+                            && !is_dir($concurrentDirectory)) {
+                                throw new ConfigurationException(sprintf('Creation of validation files folder "%s" was not possible. Permission problem?', $concurrentDirectory));
+                        }
+                    }
+
                     switch($options->validationType):
                         case CertificateValidationType::EMAIL: {
                             echo "\nFor each of this domains provide exactly one e-mail of the following in the validationEmail parameter:\n";
@@ -116,7 +136,7 @@ class RequestProcessor
                                 $tmp = explode("/",$info["file_validation_url_http"]);
                                 $fileName = end($tmp);
                                 $currentInfo = "URL: " . $info["file_validation_url_http"] . "\n" . implode("\n",$info["file_validation_content"])."\n\n";
-                                file_put_contents($options->targetPath . DIRECTORY_SEPARATOR . $domain . "-validate-" . $options->suffix . "-" . $fileName  . ".txt", $currentInfo);
+                                file_put_contents($validationPath . DIRECTORY_SEPARATOR . $domain . "-validate-" . $options->suffix . "-" . $fileName  . ".txt", $currentInfo);
                                 $remoteFileInfo .= $currentInfo;
                             }
                             self::dumpGeneratedContent("FILES",$remoteFileInfo, !$options->noOut);
@@ -131,7 +151,7 @@ class RequestProcessor
                                 $currentInfo = $info["file_validation_url_https"] . "\n\n". implode("\n",$info["file_validation_content"])."\n\n";
                                 $tmp = explode("/",$info["file_validation_url_https"]);
                                 $fileName = end($tmp);
-                                file_put_contents($options->targetPath . DIRECTORY_SEPARATOR . $domain . "-validate-" . $options->suffix . "-" . $fileName  . ".txt", $currentInfo);
+                                file_put_contents($validationPath . DIRECTORY_SEPARATOR . $domain . "-validate-" . $options->suffix . "-" . $fileName  . ".txt", $currentInfo);
                                 $remoteFileInfo .= $currentInfo;
                             }
                             self::dumpGeneratedContent("FILES",$remoteFileInfo, !$options->noOut);
@@ -142,7 +162,7 @@ class RequestProcessor
                         }
                     endswitch;
 
-                    if($nonInteractive && !$noVerification) {
+                    if($nonInteractive && !$options->createOnly) {
                         $verificationResult = self::zeroSign($hash,$options,true);
                         if(!is_null($verificationResult)) {
                             $result = array_merge($result,$verificationResult);
@@ -170,22 +190,34 @@ class RequestProcessor
             } else {
                 $certificate = SelfSigner::sign($csr,$pkey,$options->validityDays,$options->csrOptions); // could add serial argument here
                 openssl_x509_export($certificate, $certificateOut);
+                openssl_pkcs12_export($certificate, $certificateOutPfx,$pkey,$options->privateKeyPassword);
                 self::dumpGeneratedContent("CERTIFICATE", $certificateOut, !$options->noOut);
+                self::dumpGeneratedContent("PKCS#12: .p12PKCS#12 / .pfx / .p12", $certificateOutPfx, !$options->noOut);
 
                 if(!empty($options->targetPath)) {
-                    openssl_x509_export_to_file($certificate,$options->targetPath . DIRECTORY_SEPARATOR . "certificate" . $options->suffix . ".pem",$options->privateKeyPassword);
+                    openssl_x509_export_to_file($certificate,$options->targetPath . DIRECTORY_SEPARATOR . "certificate" . $options->suffix . ".pem", $options->privateKeyPassword);
+                    openssl_pkcs12_export_to_file($certificate,$options->targetPath . DIRECTORY_SEPARATOR . "certificate" . $options->suffix . ".pfx", $pkey, $options->privateKeyPassword);
                 }
                 echo "\nGenerator finished successfully. Cheers 🍻.\n";
             }
         }
 
-        $result['private_key'] = $pKeyOut;
-        $result['csr'] = $csrOut;
-        $result['certificate'] = $certificateOut;
+        $result['private.key'] = $pKeyOut;
+        $result['certificate-signing-request.csr'] = $csrOut;
+        $result['certificate.crt'] = $certificateOut;
+        $result['certificate.pfx'] = $certificateOutPfx;
 
         return $result;
     }
 
+    /**
+     * @param string $hash
+     * @param Options $options
+     * @param bool $repeat
+     * @return array|null
+     * @throws JsonException
+     * @throws RemoteRequestException
+     */
     public static function zeroSign(string $hash,Options $options, bool $repeat = false): ?array
     {
         $requester = new ApiEndpointRequester($options->debug);
@@ -231,8 +263,10 @@ class RequestProcessor
                                     "INCLUDE_CROSS_SIGNED" => $options->includeCrossSigned
                                 ],[],!empty($options->debug));
                                 if(!empty($certificateActual["certificate.crt"])) {
+
                                     self::dumpGeneratedContent("CERTIFICATE", $certificateActual["certificate.crt"], !$options->noOut);
                                     self::dumpGeneratedContent("CA BUNDLE", $certificateActual["ca_bundle.crt"], !$options->noOut);
+                                    self::dumpGeneratedContent("PKCS#12: .p12PKCS#12 / .pfx / .p12",);
                                     file_put_contents($options->targetPath . DIRECTORY_SEPARATOR . "certificate" . $options->suffix . ".crt",$certificateActual["certificate.crt"]);
                                     file_put_contents($options->targetPath . DIRECTORY_SEPARATOR . "ca_bundle" . $options->suffix . ".crt",$certificateActual["ca_bundle.crt"]);
                                     echo "\nGenerator finished successfully. Cheers 🍻.\n";
@@ -281,8 +315,7 @@ class RequestProcessor
     /**
      * @param Options $options
      * @return void
-     * @throws ConfigurationException
-     * @throws Exception\OpenSSLGenerationException|Exception\OpenSSLSigningException|NotYetSupportedException
+     * @throws Exception
      */
     public static function process(Options $options): void
     {
@@ -292,6 +325,16 @@ class RequestProcessor
 
         if(!empty($options->targetPath) && !is_dir(realpath($options->targetPath))) {
             throw new ConfigurationException("The target path \"" . $options->targetPath . "\" appears not to be a valid path.");
+        }
+
+        if(!empty($options->targetSubfolder)) {
+            $newTargetPath = $options->targetPath . DIRECTORY_SEPARATOR . $options->targetSubfolder;
+            if(!is_dir($newTargetPath)
+                && !mkdir($newTargetPath)
+                && !is_dir($newTargetPath)) {
+                throw new ConfigurationException(sprintf('Creation of output directory "%s" was not possible. Permission problem?', $newTargetPath));
+            }
+            $options->targetPath = $newTargetPath;
         }
 
         if(!$options->noOut) {
@@ -310,7 +353,7 @@ class RequestProcessor
      * @param bool $printInfo
      * @return void
      */
-    private static function dumpGeneratedContent(string $label, string $content, bool $printInfo): void
+    public static function dumpGeneratedContent(string $label, string $content, bool $printInfo): void
     {
         if($printInfo) {
             echo "\n\n### " . $label . " ###\n\n" . $content . "\n\n### END: " . $label . " ###\n\n";

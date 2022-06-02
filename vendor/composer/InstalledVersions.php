@@ -32,7 +32,7 @@ private static $installed = array (
     'aliases' => 
     array (
     ),
-    'reference' => '5666a489ac36066b714e444dbca9e788759e0881',
+    'reference' => 'a29207840f4702ddf053b96d02e6d20ce77b7d82',
     'name' => 'zerossl/cli-client',
   ),
   'versions' => 
@@ -44,7 +44,7 @@ private static $installed = array (
       'aliases' => 
       array (
       ),
-      'reference' => '5666a489ac36066b714e444dbca9e788759e0881',
+      'reference' => 'a29207840f4702ddf053b96d02e6d20ce77b7d82',
     ),
   ),
 );

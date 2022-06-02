@@ -11,6 +11,8 @@ enum InputType
     case FLOAT;
     case QUERY_STRING;
     case DOMAINS;
-    case BACKED_ENUM;
     case VALIDATION_EMAIL;
+    case FORMAT;
+    case PATH;
+    case FILE;
 }

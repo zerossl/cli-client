@@ -3,6 +3,7 @@
 namespace ZeroSSL\CliClient;
 
 
+use ZeroSSL\CliClient\Converter\Converter;
 use ZeroSSL\CliClient\Enum\InputType;
 use ZeroSSL\CliClient\Enum\InternetAddressType;
 use ZeroSSL\CliClient\Exception\ConfigurationException;
@@ -21,11 +22,11 @@ class InputSanitizer
      * @param array $input
      * @param mixed $default
      * @param InputType $inputType
-     * @param $allowEmpty
+     * @param bool $allowEmpty
      * @return mixed
      * @throws ConfigurationException
      */
-    public static function getCliArgument(string $short,string $long,array $input, mixed $default,InputType $inputType = InputType::DYNAMIC, $allowEmpty = true): mixed
+    public static function getCliArgument(string $short,string $long,array $input, mixed $default,InputType $inputType = InputType::DYNAMIC, bool $allowEmpty = true): mixed
     {
         $value = $input[$short] ?? $input[$long] ?? $default;
         return match ($inputType) {
@@ -36,7 +37,10 @@ class InputSanitizer
             InputType::STRING => (string) $value,
             InputType::QUERY_STRING => self::sanitizeQueryString($value, $long, $allowEmpty),
             InputType::DOMAINS => self::sanitizeDomains($value),
-            InputType::VALIDATION_EMAIL => self::initializeCertificateValidationEmails($value)
+            InputType::VALIDATION_EMAIL => self::initializeCertificateValidationEmails($value),
+            InputType::FORMAT => self::initializeFormats($value,$allowEmpty),
+            InputType::PATH => self::initializePath($value,$allowEmpty),
+            InputType::FILE => self::initializeFile($value,$allowEmpty)
         };
     }
 
@@ -158,5 +162,68 @@ class InputSanitizer
     public static function isWildcard(string $domain): bool
     {
         return str_starts_with($domain, '*.');
+    }
+
+    /**
+     * Initialize the file endings / formats
+     *
+     * @param string $formats
+     * @return array
+     * @throws ConfigurationException
+     */
+    public static function initializeFormats(string $formats, bool $allowEmpty): array
+    {
+        $prepared = array_filter(array_map('trim', explode(',', trim($formats))));
+        foreach($prepared as $format) {
+            if(!in_array($format, Converter::SUPPORTED_FORMATS, true)) {
+                throw new ConfigurationException("Format not supported currently: " . $format);
+            }
+        }
+        if(!$allowEmpty && empty($prepared)) {
+            throw new ConfigurationException("You have to pass a valid formats. Use a comma seperated string with at least one of: " . implode(",",Converter::SUPPORTED_FORMATS));
+        }
+        return $prepared;
+    }
+
+    /**
+     * @param string $path
+     * @param bool $allowEmpty
+     * @return string
+     * @throws ConfigurationException
+     */
+    public static function initializePath(string $path, bool $allowEmpty): string
+    {
+        if(empty($path) && !$allowEmpty) {
+            throw new ConfigurationException("You have to pass a valid and already existing output path. Your input was empty.");
+        }
+        $path = realpath($path);
+        if(!is_dir(realpath($path))) {
+            throw new ConfigurationException("You have to pass a valid and already existing output path. You passed: " . $path);
+        }
+        return $path;
+    }
+
+    /**
+     * @param string $filepath
+     * @param bool $allowEmpty
+     * @return string
+     * @throws ConfigurationException
+     */
+    public static function initializeFile(string $filepath, bool $allowEmpty): string
+    {
+        if(empty($filepath)) {
+            if($allowEmpty) {
+                return "";
+            }
+            throw new ConfigurationException("You have to pass a valid and already existing output path. Your input was empty.");
+        }
+        $filepath = realpath($filepath);
+        if(file_exists($filepath)) {
+            $fileStr = file_get_contents($filepath);
+            if($fileStr) {
+                return $fileStr;
+            }
+        }
+        throw new ConfigurationException("Unable to read input file. Please check your file path.");
     }
 }
