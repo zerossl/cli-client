@@ -266,7 +266,7 @@ class RequestProcessor
 
                                     self::dumpGeneratedContent("CERTIFICATE", $certificateActual["certificate.crt"], !$options->noOut);
                                     self::dumpGeneratedContent("CA BUNDLE", $certificateActual["ca_bundle.crt"], !$options->noOut);
-                                    self::dumpGeneratedContent("PKCS#12: .p12PKCS#12 / .pfx / .p12",);
+                                    // integrate generator: self::dumpGeneratedContent("PKCS#12: .p12PKCS#12 / .pfx / .p12",$certificateActual["ca_bundle.crt"]);
                                     file_put_contents($options->targetPath . DIRECTORY_SEPARATOR . "certificate" . $options->suffix . ".crt",$certificateActual["certificate.crt"]);
                                     file_put_contents($options->targetPath . DIRECTORY_SEPARATOR . "ca_bundle" . $options->suffix . ".crt",$certificateActual["ca_bundle.crt"]);
                                     echo "\nGenerator finished successfully. Cheers 🍻.\n";
