@@ -34,7 +34,7 @@ class CSRTool
     public static function generatePrivateKey(bool $useEccDefault = false, array $options = []): OpenSSLAsymmetricKey
     {
         $key = openssl_pkey_new(array_merge(($useEccDefault) ? self::PRIVATE_KEY_DEFAULT_ECC : self::PRIVATE_KEY_DEFAULT_RSA, $options));
-        if(!$key) {
+        if (!$key) {
             throw new OpenSSLGenerationException("Unable to generate private key with the given options. Please check: https://www.php.net/manual/en/function.openssl-pkey-new.php for more information.");
         }
         return $key;
@@ -53,7 +53,8 @@ class CSRTool
      * @throws OpenSSLGenerationException
      * @throws ConfigurationException
      */
-    public static function getCSR(OpenSSLAsymmetricKey $privateKey,
+    public static function getCSR(
+        OpenSSLAsymmetricKey $privateKey,
         #[ArrayShape([
             "countryName" => "string",
             "stateOrProvinceName" => "string",
@@ -61,26 +62,55 @@ class CSRTool
             "organizationName" => "string",
             "organizationalUnitName" => "string",
             "emailAddress" => "string"
-    ])] $csrData, array $internetAddresses, bool $useEccDefault = false, array $options = []
-    ): OpenSSLCertificateSigningRequest
-    {
-        if(!array_key_exists("countryName",$csrData) || !array_key_exists("organizationName",$csrData) || !array_key_exists("emailAddress",$csrData)) {
-            throw new ConfigurationException("Please provide at least country code, organization name and email address for your CSR as a query string parameter. This is required.\nExample: --csrData countryName={_}&stateOrProvinceName={_}&localityName={_}&organizationName={_}&organizationalUnitName={_}&emailAddress{_}");
+        ])] $csrData,
+        array $internetAddresses,
+        bool $useEccDefault = false,
+        array $options = []
+    ): OpenSSLCertificateSigningRequest {
+        if (!array_key_exists(key: "countryName", array: $csrData) || !array_key_exists(key: "organizationName", array: $csrData) || !array_key_exists(key: "emailAddress", array: $csrData)) {
+            throw new ConfigurationException(message: "Please provide at least country code, organization name and email address for your CSR as a query string parameter. This is required.\nExample: --csrData countryName={_}&stateOrProvinceName={_}&localityName={_}&organizationName={_}&organizationalUnitName={_}&emailAddress{_}");
         }
 
         $csrData['commonName'] = reset($internetAddresses);
-        if(empty($csrData["commonName"])) {
-            throw new ConfigurationException("Missing common name for CSR. Please check your domains parameter.");
+        if (empty($csrData["commonName"])) {
+            throw new ConfigurationException(message: "Missing common name for CSR. Please check your domains parameter.");
         }
 
         // check if sans included: https://www.pixelite.co.nz/article/how-to-generate-a-csr-with-sans-in-php/
-        file_put_contents('/tmp/openssl.cnf', self::generateSANTemplate($internetAddresses));
-        $options['config'] = '/tmp/openssl.cnf';
+        // Check the operating system
+        $isWindows = strtoupper(string: substr(string: PHP_OS, offset: 0, length: 3)) === 'WIN';
+        $isMacOS = strtoupper(string: substr(string: PHP_OS, offset: 0, length: 6)) === 'DARWIN';
+
+
+        // Define the directory path based on the operating system
+        if ($isWindows) {
+            $configPath = 'C:\OpenSSL\config';
+        } elseif ($isMacOS) {
+            // Common paths for OpenSSL config on macOS
+            $configPath = '/usr/local/etc/openssl'; // Homebrew installation
+            if (!is_dir(filename: $configPath)) {
+                $configPath = '/System/Library/OpenSSL'; // Default macOS OpenSSL location
+            }
+        } else {
+            $configPath = '/tmp/openssl';
+        }
+
+        // Create the directory if it doesn't exist
+        if (!is_dir(filename: $configPath)) {
+            mkdir(directory: $configPath, permissions: 0755, recursive: true);
+        }
+
+        // Generate the full path for the openssl.cnf file
+        $configFile = $configPath . ($isWindows ? '\openssl.cnf' : '/openssl.cnf');
+
+        // Write the configuration file
+        file_put_contents(filename: $configFile, data: self::generateSANTemplate(internetAddresses: $internetAddresses));
+        $options['config'] = $configFile;
 
         // Generate a certificate signing request
-        $csr = openssl_csr_new($csrData, $privateKey, array_merge(["digest_alg" => ($useEccDefault) ? self::DIGEST_ALG_DEFAULT_ECC : self::DIGEST_ALG_DEFAULT_RSA], $options));
+        $csr = openssl_csr_new(distinguished_names: $csrData, private_key: $privateKey, options: array_merge(["digest_alg" => ($useEccDefault) ? self::DIGEST_ALG_DEFAULT_ECC : self::DIGEST_ALG_DEFAULT_RSA], $options));
 
-        if(!$csr) {
+        if (!$csr) {
             throw new OpenSSLGenerationException("Unable to generate CSR with the given options. More information: https://www.php.net/manual/en/function.openssl-csr-new.php");
         }
         return $csr;
@@ -98,14 +128,14 @@ class CSRTool
 
         $sans = "";
         foreach ($internetAddresses as $address) {
-            if(InputSanitizer::getAddressType($address) === InternetAddressType::DOMAIN) {
+            if (InputSanitizer::getAddressType($address) === InternetAddressType::DOMAIN) {
                 $cur = $ctDomain++;
                 $prefix = "DNS";
             } else {
                 $cur = $ctIp++;
                 $prefix = "IP";
             }
-            $sans .= $prefix . "." . $cur ." = " . $address ."\n";
+            $sans .= $prefix . "." . $cur . " = " . $address . "\n";
         }
 
         return <<<SANTEMPLATE

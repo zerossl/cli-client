@@ -40,7 +40,9 @@ class InputSanitizer
             InputType::VALIDATION_EMAIL => self::initializeCertificateValidationEmails($value),
             InputType::FORMAT => self::initializeFormats($value,$allowEmpty),
             InputType::PATH => self::initializePath($value,$allowEmpty),
-            InputType::FILE => self::initializeFile($value,$allowEmpty)
+            InputType::FILE => self::initializeFile($value,$allowEmpty),
+        
+          
         };
     }
 
@@ -96,6 +98,9 @@ class InputSanitizer
     {
         return strtolower(rtrim(trim($domain), "."));
     }
+
+
+
 
     /**
      * Check the type of an internet address.
@@ -202,6 +207,7 @@ class InputSanitizer
         }
         return $path;
     }
+
 
     /**
      * @param string $filepath

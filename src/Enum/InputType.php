@@ -15,4 +15,5 @@ enum InputType
     case FORMAT;
     case PATH;
     case FILE;
+    case ENUM;
 }

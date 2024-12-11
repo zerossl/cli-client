@@ -9,6 +9,8 @@ use ZeroSSL\CliClient\Enum\InputType;
 use ZeroSSL\CliClient\InputSanitizer;
 use ZeroSSL\CliClient\RequestProcessor;
 
+
+
 ini_set('max_execution_time', 1200);
 set_time_limit(1200);
 
@@ -49,7 +51,7 @@ $preparedOptions->useEccDefaults = InputSanitizer::getCliArgument("d", "useEccDe
 $preparedOptions->privateKeyOptions = InputSanitizer::getCliArgument("y", "privateKeyOptions", $options, [],InputType::QUERY_STRING, true);
 $preparedOptions->csrOnly = InputSanitizer::getCliArgument("o", "csrOnly", $options, false,InputType::BOOL);
 $preparedOptions->createOnly = InputSanitizer::getCliArgument("r", "createOnly", $options, false,InputType::BOOL);
-$preparedOptions->csrData = InputSanitizer::getCliArgument("c", "csrData", $options, [],InputType::QUERY_STRING, false);
+$preparedOptions->csrData = InputSanitizer::getCliArgument("c", "csrData", $options, "", InputType::QUERY_STRING, false);
 $preparedOptions->csrOptions = InputSanitizer::getCliArgument("s", "csrOptions", $options, [],InputType::QUERY_STRING, true);
 $preparedOptions->validityDays = InputSanitizer::getCliArgument("v", "validityDays", $options, 90,InputType::INT);
 $preparedOptions->validationEmail = InputSanitizer::getCliArgument("z", "validationEmail", $options, "",InputType::VALIDATION_EMAIL);
