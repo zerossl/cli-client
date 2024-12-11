@@ -50,6 +50,7 @@ class RequestProcessor
         if(!empty($options->targetPath)) {
             openssl_pkey_export_to_file($pkey,$options->targetPath . DIRECTORY_SEPARATOR . "private" . $options->suffix . ".key",$options->privateKeyPassword);
         }
+        
 
         $csr = CSRTool::getCSR($pkey,$options->csrData,$options->domains,$options->useEccDefaults,$options->csrOptions);
         openssl_csr_export($csr, $csrOut);
@@ -62,28 +63,41 @@ class RequestProcessor
         $certificateOut = null;
         $certificateOutPfx = null;
 
+        
+
         if(!$options->csrOnly) {
 
             // sign with ZeroSSL
             if($options->apiKey) {
                 echo "\nInitiating contact with ZeroSSL CA, relax a little bit ... 😌\n";
+              
 
-                if(is_null($options->validationType)) {
-                    throw new ConfigurationException("You need to configure a validation method for a ZeroSSL certificate.");
+               
+
+                if (!in_array($options->validationType, CertificateValidationType::cases(), true)) {
+                    $validMethods = implode(', ', array_map(fn($case) => $case->name, CertificateValidationType::cases()));
+                    throw new Exception(
+                        "You need to configure a valid validation method for a ZeroSSL certificate. Provided value: " . 
+                        ($options->validationType ? $options->validationType->value : 'None') . 
+                        ". Valid options are: " . $validMethods
+                    );
                 }
-
+                
+                
+                
+                
                 // call create certificate
-                $requester = new ApiEndpointRequester($options->debug);
+                $requester = new ApiEndpointRequester(apiUrl: $options->debug);
                 $endpoint = $requester->apiEndpointInfo->endpoints['create_certificate'];
-                $draft = $requester->requestJson($endpoint,[
+                $draft = $requester->requestJson(endpoint: $endpoint,urlParams: [
                     "API_URL" => $requester->apiUrl,
                     "ACCESS_KEY" => $options->apiKey
-                ],[
-                    "certificate_domains" => implode(",",$options->domains),
+                ],params: [
+                    "certificate_domains" => implode(separator: ",",array: $options->domains),
                     "certificate_csr" => $csrOut,
                     "certificate_validity_days" => $options->validityDays,
                     "strict_domains" => 1
-                ],!empty($options->debug));
+                ],insecureDebug: !empty($options->debug));
 
                 if(!empty($draft["id"])) {
 
@@ -91,28 +105,48 @@ class RequestProcessor
 
                     if(!$options->noOut) {
                         echo "\nFirst step successfully proceeded 🙂\n";
-                        self::dumpGeneratedContent("CERTIFICATE HASH",$hash,true);
+                        self::dumpGeneratedContent(label: "CERTIFICATE HASH",content: $hash,printInfo: true);
                         echo "\nFirst step successfully initiated. Now lets verify your ownership and sign it 🙂\n";
                     }
 
                     if($options->targetPath) {
                         $validationPath = $options->targetPath . DIRECTORY_SEPARATOR . self::VALIDATION_SUBFOLDER;
                         if($options->validationType !== CertificateValidationType::EMAIL
-                            && !is_dir($validationPath)
-                            && !mkdir($concurrentDirectory = $validationPath)
-                            && !is_dir($concurrentDirectory)) {
-                                throw new ConfigurationException(sprintf('Creation of validation files folder "%s" was not possible. Permission problem?', $concurrentDirectory));
+                            && !is_dir(filename: $validationPath)
+                            && !mkdir(directory: $concurrentDirectory = $validationPath)
+                            && !is_dir(filename: $concurrentDirectory)) {
+                                throw new ConfigurationException(message: sprintf(format: 'Creation of validation files folder "%s" was not possible. Permission problem?', values: $concurrentDirectory));
                         }
                     }
 
                     switch($options->validationType):
                         case CertificateValidationType::EMAIL: {
-                            echo "\nFor each of this domains provide exactly one e-mail of the following in the validationEmail parameter:\n";
-                            $emailInfo = "";
-                            foreach($draft["validation"]["email_validation"] as $domain => $mails) {
-                                $emailInfo .= "\n$domain: " . implode(",",$mails) . "\n";
+                            echo "\nFor each of these domains, you need to provide one email address for validation.\n";
+                        
+                            $emails = [];
+                            foreach ($draft["validation"]["email_validation"] as $domain => $mails) {
+                                echo "\nAvailable emails for $domain:\n" . implode(", ", $mails) . "\n";
+                                echo "Enter the email you want to use for validation (or leave blank to skip this domain): ";
+                        
+                                $handle = fopen("php://stdin", 'rb');
+                                $email = trim(fgets($handle));
+                        
+                                if (empty($email)) {
+                                    echo "Skipping validation for $domain.\n";
+                                } elseif (!in_array($email, $mails, true)) {
+                                    echo "Invalid email selected. Please re-run the script and provide a valid email.\n";
+                                    fclose($handle);
+                                    exit(1); // Exit the script if invalid email is entered
+                                } else {
+                                    $emails[$domain] = $email;
+                                    echo "Email $email selected for domain $domain.\n";
+                                }
                             }
-                            self::dumpGeneratedContent("VALIDATION EMAILS",$emailInfo, !$options->noOut);
+                        
+                            fclose($handle);
+                            $options->validationEmail = $emails; // Store selected emails in options for API request
+                        
+                            self::dumpGeneratedContent("SELECTED VALIDATION EMAILS", print_r($emails, true), !$options->noOut);
                             break;
                         }
                         case CertificateValidationType::CNAME_CSR_HASH: {
