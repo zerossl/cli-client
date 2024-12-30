@@ -31,7 +31,7 @@ class CSRTool
      * @return OpenSSLAsymmetricKey
      * @throws OpenSSLGenerationException
      */
-    public static function generatePrivateKey(bool $useEccDefault = false, array $options = []): OpenSSLAsymmetricKey
+    public static function generatePrivateKey(bool $useEccDefault, array $options = []): OpenSSLAsymmetricKey
     {
         $key = openssl_pkey_new(array_merge(($useEccDefault) ? self::PRIVATE_KEY_DEFAULT_ECC : self::PRIVATE_KEY_DEFAULT_RSA, $options));
         if (!$key) {
@@ -70,11 +70,12 @@ class CSRTool
         if (!array_key_exists(key: "countryName", array: $csrData) || !array_key_exists(key: "organizationName", array: $csrData) || !array_key_exists(key: "emailAddress", array: $csrData)) {
             throw new ConfigurationException(message: "Please provide at least country code, organization name and email address for your CSR as a query string parameter. This is required.\nExample: --csrData countryName={_}&stateOrProvinceName={_}&localityName={_}&organizationName={_}&organizationalUnitName={_}&emailAddress{_}");
         }
-
         $csrData['commonName'] = reset($internetAddresses);
-        if (empty($csrData["commonName"])) {
-            throw new ConfigurationException(message: "Missing common name for CSR. Please check your domains parameter.");
+
+        if (empty($csrData['commonName'])) {
+            throw new ConfigurationException("Missing common name for CSR. Please check your domains parameter.");
         }
+      
 
         // check if sans included: https://www.pixelite.co.nz/article/how-to-generate-a-csr-with-sans-in-php/
         // Check the operating system
@@ -100,6 +101,7 @@ class CSRTool
             mkdir(directory: $configPath, permissions: 0755, recursive: true);
         }
 
+        $options['digest_alg'] = $useEccDefault ? self::DIGEST_ALG_DEFAULT_ECC : self::DIGEST_ALG_DEFAULT_RSA;
         // Generate the full path for the openssl.cnf file
         $configFile = $configPath . ($isWindows ? '\openssl.cnf' : '/openssl.cnf');
 
@@ -125,8 +127,8 @@ class CSRTool
     {
         $ctIp = 0;
         $ctDomain = 0;
-
         $sans = "";
+
         foreach ($internetAddresses as $address) {
             if (InputSanitizer::getAddressType($address) === InternetAddressType::DOMAIN) {
                 $cur = $ctDomain++;

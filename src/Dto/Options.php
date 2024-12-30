@@ -17,11 +17,18 @@ class Options
     public array $validationEmail;
     public bool $csrOnly;
     public bool $createOnly;
-    public bool $useEccDefaults;
+    public bool $useEccDefaults =  true;
     public array $privateKeyOptions;
     public array $csrData;
     public array $csrOptions;
     public int $validityDays;
     public bool $includeCrossSigned;
+
     public string $debug = "";
+
+
+
+ 
+
+
 }
