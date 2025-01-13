@@ -215,21 +215,33 @@ class InputSanitizer
      * @return string
      * @throws ConfigurationException
      */
-    public static function initializeFile(string $filepath, bool $allowEmpty): string
+    public static function initializeFile(string $filepath, bool $allowEmpty, bool $isInputFile = true): string
     {
-        if(empty($filepath)) {
-            if($allowEmpty) {
+        if (empty($filepath)) {
+            if ($allowEmpty) {
                 return "";
             }
-            throw new ConfigurationException("You have to pass a valid and already existing output path. Your input was empty.");
+            throw new ConfigurationException("You have to pass a valid file path. Your input was empty.");
         }
-        $filepath = realpath($filepath);
-        if(file_exists($filepath)) {
-            $fileStr = file_get_contents($filepath);
-            if($fileStr) {
-                return $fileStr;
+    
+        if ($isInputFile) {
+            // For input files, check if the file exists and is readable
+            if (!file_exists($filepath) || !is_readable($filepath)) {
+                throw new ConfigurationException("Unable to read input file. Please check your file path: $filepath");
             }
+            $fileStr = file_get_contents($filepath);
+            if ($fileStr === false) {
+                throw new ConfigurationException("Failed to read contents of input file: $filepath");
+            }
+            return $fileStr;
+        } else {
+            // For output paths, just check if the directory exists and is writable
+            $dir = dirname($filepath);
+            if (!is_dir($dir) || !is_writable($dir)) {
+                throw new ConfigurationException("Output directory does not exist or is not writable: $dir");
+            }
+            return "";
         }
-        throw new ConfigurationException("Unable to read input file. Please check your file path.");
     }
+    
 }
