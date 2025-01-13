@@ -23,6 +23,7 @@ $options = getopt($short_options, $long_options);
 
 try {
     $inputFile = InputSanitizer::getCliArgument("i", "input", $options, "", InputType::FILE);
+    $inputFile = InputSanitizer::getCliArgument("i", "input", $options, "", InputType::STRING);
     $formats = InputSanitizer::getCliArgument("f", "formats", $options, "", InputType::FORMAT);
     $targetPath = InputSanitizer::getCliArgument("t", "targetPath", $options, "", InputType::PATH, false);
 
@@ -33,44 +34,28 @@ try {
         $key = InputSanitizer::getCliArgument("k", "keyPath", $options, "", InputType::FILE, false);
         $keyPass = InputSanitizer::getCliArgument("p", "keyPass", $options, "", InputType::STRING, false);
     }
-
-    // Read the input certificate
-   // Validate and read the input certificate
-
-   $inputFile = InputSanitizer::getCliArgument("i", "input", $options, "", InputType::FILE);
-   $inputFile = InputSanitizer::getCliArgument("i", "input", $options, "", InputType::STRING);
+    
+     // Read the input certificate
 
    echo "Input file path: " . $inputFile . PHP_EOL;
- 
-   if (!empty($inputFile) && file_exists($inputFile)) {
-    // Read certificate content from the file
-    $certificateContent = file_get_contents($inputFile);
-} else {
-    // If the input is not a file, treat it as certificate content directly
-    $certificateContent = $inputFile;
-}
 
-    // Ensure the input file exists
-    if (!file_exists($inputFile)) {
-        throw new ConfigurationException("Input file not found: " . $inputFile);
+ 
+   if (file_exists($inputFile)) {
+    $certificateContent = file_get_contents($inputFile);
+    if ($certificateContent === false) {
+        throw new ConfigurationException("Failed to read input file: " . $inputFile);
     }
-    
-   // Read the file content
-   $certificateContent = file_get_contents($inputFile);
-   if ($certificateContent === false) {
-       throw new ConfigurationException("Failed to read input file: " . $inputFile);
-   }
+    } else {
+    throw new ConfigurationException("Input file not found: " . $inputFile);
+}
   
    echo "Certificate Content:\n" . $certificateContent . PHP_EOL;
    
-   $inputCert = file_get_contents($inputFile);
-   if ($inputCert === false) {
-       throw new ConfigurationException("Unable to read input certificate file: " . $inputFile);
-   }
+
     // Convert and save in specified formats
     foreach ($formats as $format) {
         $outputFile = $targetPath . DIRECTORY_SEPARATOR . "converted_certificate" . "." . $format;
-        $convertedCert = Converter::fromCrt($inputCert, $format, $key, $keyPass);
+        $convertedCert = Converter::fromCrt($certificateContent, $format, $key, $keyPass);
         
         if (file_put_contents($outputFile, $convertedCert) === false) {
             throw new ConfigurationException("Failed to write converted certificate to $outputFile");

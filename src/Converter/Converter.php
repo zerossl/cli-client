@@ -22,23 +22,27 @@ class Converter
      */
     public static function fromCrt(string $certificate, string $format, ?string $privateKey, ?string $privateKeyPassword): string
     {
+        // Validate that the input is a certificate
+        if (openssl_x509_read($certificate) === false) {
+            throw new CertificateConversionException("The provided input is not a valid certificate.");
+        }
+    
         if (in_array($format, self::FORMAT_CRT_PEM, true)) {
             return $certificate;
         }
-
+    
         if (in_array($format, self::FORMAT_DER, true)) {
             return self::pem2der($certificate);
         }
-
+    
         if (in_array($format, self::FORMAT_PKCS12, true)) {
             $out = "";
             openssl_pkcs12_export($certificate, $out, $privateKey, $privateKeyPassword);
             return $out;
         }
-
+    
         throw new CertificateConversionException("The format " . $format . " is not (yet?) supported.");
     }
-
 
     /**
      * Converts a PEM certificate to a DER certificate.
