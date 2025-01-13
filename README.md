@@ -34,7 +34,7 @@ Please report any bugs you may encounter or even better create an MR to fix them
  - [Generator](./README-generator.md): Get a signed SSL certificate in the command line from scratch in less than a minute
  - [Downloader](./README-downloader.md): Download ZeroSSL certificates in any format which might be required
  - [CSR Tool](./README-csrtool.md): Advanced tool for CSR generation (under construction)
- - [Certificate Converter](./README-converter.md): Certificate format conversion tool (under construction)
+ - [Certificate Converter](./README-converter.md): Certificate format conversion tool
 
 ## Errors
 
