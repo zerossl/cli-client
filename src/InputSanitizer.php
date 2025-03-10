@@ -7,8 +7,11 @@ use ZeroSSL\CliClient\Converter\Converter;
 use ZeroSSL\CliClient\Enum\InputType;
 use ZeroSSL\CliClient\Enum\InternetAddressType;
 use ZeroSSL\CliClient\Exception\ConfigurationException;
-use JetBrains\PhpStorm\Pure;
+
 use Throwable;
+
+require_once __DIR__ . '/Enum/InternetAddressType.php';
+
 
 class InputSanitizer
 {
@@ -153,7 +156,7 @@ class InputSanitizer
      * @param string $domain
      * @return string
      */
-    #[Pure] public static function removeWildcardPrefix(string $domain): string
+     public static function removeWildcardPrefix(string $domain): string
     {
         return (self::isWildcard($domain)) ? substr($domain, 2) : $domain;
     }
@@ -242,6 +245,24 @@ class InputSanitizer
             }
             return "";
         }
+    }
+
+    public static function processDomainsInput(string $domainsString): array
+    {
+        return self::sanitizeDomains($domainsString);
+    }
+
+
+    public static function sanitizeCSRData(string $csrDataString): array
+    {
+        parse_str($csrDataString, $csrData);
+        $requiredFields = ['countryName', 'organizationName', 'emailAddress'];
+        foreach ($requiredFields as $field) {
+            if (!isset($csrData[$field]) || empty($csrData[$field])) {
+                throw new ConfigurationException("Missing required CSR field: $field");
+            }
+        }
+        return $csrData;
     }
     
 }
